@@ -1,6 +1,6 @@
 package com.inventi.homework.controller;
 
-import com.inventi.homework.BankAccountStatementForm;
+import com.inventi.homework.BankAccountStatementBody;
 import com.inventi.homework.service.BankAccountOperationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +21,7 @@ public class BankAccountTransactionController {
 
     @GetMapping("/export")
     public void exportCSVFile(
-        @RequestBody List<BankAccountStatementForm> bankAccountStatementForm) {
+        @RequestBody List<BankAccountStatementBody> bankAccountStatementForm) {
         bankAccountOperationService.exportCSV(bankAccountStatementForm);
     }
 

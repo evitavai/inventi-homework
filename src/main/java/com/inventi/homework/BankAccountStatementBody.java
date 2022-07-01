@@ -2,15 +2,13 @@ package com.inventi.homework;
 
 import lombok.*;
 
-import java.util.Date;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BankAccountStatementForm {
+public class BankAccountStatementBody {
     private String accountNumber;
-    private Date dateFrom;
-    private Date dateTo;
+    private String dateFrom;
+    private String dateTo;
 }

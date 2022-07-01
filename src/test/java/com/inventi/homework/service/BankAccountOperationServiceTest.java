@@ -1,13 +1,10 @@
 package com.inventi.homework.service;
 
-import com.inventi.homework.BankAccountStatementForm;
-import com.inventi.homework.entity.BankAccount;
+import com.inventi.homework.BankAccountStatementBody;
 import com.inventi.homework.entity.BankAccountOperation;
 import com.inventi.homework.repository.BankAccountOperationRepository;
 import com.inventi.homework.repository.BankAccountRepository;
-import com.opencsv.CSVWriter;
-import com.opencsv.exceptions.CsvDataTypeMismatchException;
-import com.opencsv.exceptions.CsvRequiredFieldEmptyException;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,9 +16,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.jdbc.JdbcTestUtils;
 
-import java.io.FileWriter;
+import java.io.File;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -31,9 +27,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
+import static com.inventi.homework.helpers.TestHelpers.createTestBankAccounts;
+import static com.inventi.homework.helpers.TestHelpers.createTestBankTransactionData;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(SpringExtension.class)
@@ -54,58 +51,35 @@ class BankAccountOperationServiceTest {
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
-    void tearDown() throws IOException {
-        JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_operations", "bank_accounts");//deletes all data from table before each test
+    void tearDown() throws IOException, ParseException {
+        FileUtils.deleteDirectory(new File("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/"));
+        JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
-        String filename = "bankStatement.csv";
+        ArrayList<String> bankAccountNumbers = new ArrayList<>();
+        bankAccountNumbers.add("TSG54SA");
+        bankAccountNumbers.add("JHADD54");
 
-        List<BankAccountOperation> bankOperations = new ArrayList<>();
-        List<BankAccount> bankAccounts = new ArrayList<>();
-
-
-        BankAccount bankAccount = BankAccount.builder().accountNumber("TSG54SA").build();
-        BankAccount bankAccount2 = BankAccount.builder().accountNumber("JHADD54").build();
-
-        bankAccountRepository.saveAndFlush(bankAccount);
-        bankAccountRepository.saveAndFlush(bankAccount2);
-
-
-        bankOperations.add(BankAccountOperation.builder().accountNumber(bankAccount.getAccountNumber()).operationDate(Timestamp.from(Instant.now()))
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.TEN)
-            .currency("EUR")
-            .build());
-
-        bankOperations.add(BankAccountOperation.builder().accountNumber(bankAccount2.getAccountNumber()).operationDate(Timestamp.from(Instant.now()))
-            .beneficiary("Joe Doe")
-            .amount(BigDecimal.TEN)
-            .currency("USD")
-            .build());
-
-        String csv = "test-data.csv";
-
-        StringWriter sw = new StringWriter();
-        CSVWriter writer = new CSVWriter(new FileWriter(csv));
-
-        //Write header
-        String[] header = {"account_number", "operation_date", "beneficiary", "comment", "amount", "currency"};
-        writer.writeNext(header);
-
-        //Write data
-
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String[] data;
-        for (BankAccountOperation s : bankOperations) {
-            data = new String[]{String.valueOf(s.getAccountNumber()), df.format(s.getOperationDate()), s.getBeneficiary(), s.getComment(), String.valueOf(s.getAmount()), s.getCurrency()};
-            writer.writeNext(data);
-        }
-        writer.close();
+        createTestBankAccounts(bankAccountNumbers, bankAccountRepository);
     }
 
     @Test
     void importsBankStatementFromCsvFileSuccessfully() throws IOException {
+        List<BankAccountOperation> bankOperations = new ArrayList<>();
+        bankOperations.add(BankAccountOperation.builder().accountNumber("TSG54SA").operationDate(Timestamp.from(Instant.now()))
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.valueOf(20))
+            .currency("EUR")
+            .build());
+        bankOperations.add(BankAccountOperation.builder().accountNumber("JHADD54").operationDate(Timestamp.from(Instant.now()))
+            .beneficiary("Joe Doe")
+            .amount(BigDecimal.TEN)
+            .currency("USD")
+            .isWithdrawal(true)
+            .build());
 
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/test-data.csv")));
+        createTestBankTransactionData(bankOperations);
+
+        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
 
         bankAccountOperationService.importCSV(mockitoMultipartFile);
 
@@ -117,51 +91,72 @@ class BankAccountOperationServiceTest {
     }
 
     @Test
-    void exportsBankStatementToCsvFileSuccessfully() throws IOException, ParseException, CsvRequiredFieldEmptyException, CsvDataTypeMismatchException {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+    void exportsBankStatementToCsvFileSuccessfully() throws IOException, ParseException {
+        DateFormat df = new SimpleDateFormat();
+        ((SimpleDateFormat) df).applyPattern("yyyy-MM-dd");
+        df.setLenient(false);
+        List<BankAccountOperation> bankOperations = new ArrayList<>();
+        bankOperations.add(BankAccountOperation.builder().accountNumber("TSG54SA").operationDate(new Timestamp(df.parse("2002-04-05").getTime()))
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.valueOf(20))
+            .currency("EUR")
+            .build());
+        bankOperations.add(BankAccountOperation.builder().accountNumber("TSG54SA").operationDate(new Timestamp(df.parse("2019-08-05").getTime()))
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.TEN)
+            .currency("USD")
+            .build());
+        bankOperations.add(BankAccountOperation.builder().accountNumber("JHADD54").operationDate(new Timestamp(df.parse("2004-04-05").getTime()))
+            .beneficiary("Joe Doe")
+            .amount(BigDecimal.TEN)
+            .currency("USD")
+            .isWithdrawal(true)
+            .build());
 
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/test-data.csv")));
+        createTestBankTransactionData(bankOperations);
+
+
+        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
 
         bankAccountOperationService.importCSV(mockitoMultipartFile);
 
-        Date date = df.parse("2022-05-06");
-        Date date2 = df.parse("2022-08-06");
 
-        List<BankAccountStatementForm> forms = new ArrayList<>();
+        List<BankAccountStatementBody> forms = new ArrayList<>();
 
 
-        forms.add(BankAccountStatementForm.builder().accountNumber("TSG54SA").dateFrom(date).dateTo(date2).build());
+        forms.add(BankAccountStatementBody.builder().accountNumber("TSG54SA").dateFrom("2001-05-06").dateTo("2022-08-06").build());
 
 
-        long time1 = date.getTime();
-        long time2 = date2.getTime();
-
-        new Timestamp(time1);
         bankAccountOperationService.exportCSV(forms);
     }
 
     @Test
-    void calculatesBalanceSuccessfully() throws IOException, ParseException, CsvRequiredFieldEmptyException, CsvDataTypeMismatchException {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+    void calculatesBalanceSuccessfully() throws IOException, ParseException {
+        DateFormat df = new SimpleDateFormat();
+        ((SimpleDateFormat) df).applyPattern("yyyy-MM-dd");
+        df.setLenient(false);
+        List<BankAccountOperation> bankOperations = new ArrayList<>();
+        bankOperations.add(BankAccountOperation.builder().accountNumber("TSG54SA").operationDate(new Timestamp(df.parse("2002-04-05").getTime()))
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.valueOf(20))
+            .currency("EUR")
+            .build());
+        bankOperations.add(BankAccountOperation.builder().accountNumber("TSG54SA").operationDate(new Timestamp(df.parse("2019-08-05").getTime()))
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.TEN)
+            .isWithdrawal(true)
+            .currency("USD")
+            .build());
 
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/test-data.csv")));
+        createTestBankTransactionData(bankOperations);
+
+        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
 
         bankAccountOperationService.importCSV(mockitoMultipartFile);
 
-        Date date = df.parse("2022-05-06");
-        Date date2 = df.parse("2022-08-06");
+        BigDecimal bd = bankAccountOperationService.calculateAccountBalance("TSG54SA", "2001-05-06", "2022-08-06");
 
-        List<BankAccountStatementForm> forms = new ArrayList<>();
-
-
-        forms.add(BankAccountStatementForm.builder().accountNumber("TSG54SA").dateFrom(date).dateTo(date2).build());
-
-
-        long time1 = date.getTime();
-        long time2 = date2.getTime();
-
-        new Timestamp(time1);
-        bankAccountOperationService.exportCSV(forms);
+        assertEquals(BigDecimal.TEN, bd);
     }
 
 }

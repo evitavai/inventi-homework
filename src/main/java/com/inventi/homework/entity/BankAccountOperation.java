@@ -15,7 +15,7 @@ import java.sql.Timestamp;
 @AllArgsConstructor
 @Entity
 @Builder
-@Table(name = "bank_account_operations")
+@Table(name = "bank_account_transactions")
 public class BankAccountOperation {
 
   @Id
@@ -51,4 +51,8 @@ public class BankAccountOperation {
   @Column(name = "currency")
   @CsvBindByPosition(position = 5, required = true)
   private String currency;
+
+  @Column(name = "is_withdrawal")
+  @CsvBindByPosition(position = 6)
+  private boolean isWithdrawal;
 }
