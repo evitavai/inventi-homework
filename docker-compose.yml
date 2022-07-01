@@ -1,0 +1,14 @@
+version: '3.5'
+
+services:
+
+  postgres:
+    image: postgres:13-alpine
+    container_name: inventi
+    command: '-c full_page_writes=off -c fsync=off -c synchronous_commit=off'
+    ports:
+      - '25432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=inventi
