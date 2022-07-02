@@ -8,6 +8,7 @@ import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.inventi.homework.helpers.BankTransactionHelpers.checkExistingBankTransaction;
@@ -33,6 +35,8 @@ import static com.inventi.homework.helpers.BankTransactionHelpers.checkExistingB
 public class BankTransactionServiceImpl implements BankTransactionService {
 
     private final BankTransactionRepository bankTransactionRepository;
+
+    private final Environment env;
 
     @Override
     public void importCSV(MultipartFile file) {
@@ -82,7 +86,8 @@ public class BankTransactionServiceImpl implements BankTransactionService {
                 existingBankTransactions.ifPresent((bankTransactions) -> bankTransactionList.add(Optional.of(bankTransactions)));
             });
 
-            File csvOutputFile = new File("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/bank-statement-output.csv");
+            File file = new File(Objects.requireNonNull(env.getProperty("outputFile.path")));
+            File csvOutputFile = new File(file.getAbsolutePath());
             csvOutputFile.getParentFile().mkdirs();
 
             log.debug("Starting to write data into an output file {}", csvOutputFile);

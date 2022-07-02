@@ -6,6 +6,7 @@ import com.inventi.homework.repository.BankAccountRepository;
 import com.opencsv.CSVWriter;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -13,19 +14,21 @@ import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @AllArgsConstructor
 @Slf4j
-public final class TestHelpers {
+public class TestHelpers {
+
     public static void createTestBankAccounts(ArrayList<String> accountNumbers, BankAccountRepository bankAccountRepository) {
         accountNumbers.forEach((accountNumber) -> {
             bankAccountRepository.saveAndFlush(BankAccount.builder().accountNumber(accountNumber).build());
         });
     }
 
-    public static void createTestBankTransactionData(List<BankTransaction> bankAccountTransactions) {
+    public static void createTestBankTransactionData(List<BankTransaction> bankAccountTransactions, Environment env) {
         try {
-            File csvOutputFile = new File("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv");
+            File csvOutputFile = new File(Objects.requireNonNull(env.getProperty("testDataFile.path")));
             csvOutputFile.getParentFile().mkdirs();
 
             CSVWriter csvWriter = new CSVWriter(new FileWriter(csvOutputFile));

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -23,10 +24,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.inventi.homework.helpers.TestHelpers.createTestBankAccounts;
 import static com.inventi.homework.helpers.TestHelpers.createTestBankTransactionData;
@@ -35,23 +36,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+public
 class BankTransactionServiceTest {
 
+    static public final String absoluteTestDataPath = new File("./data/").getAbsolutePath();
     @Autowired
     private BankTransactionRepository bankTransactionRepository;
-
     @Autowired
     private BankAccountRepository bankAccountRepository;
-
     @Autowired
     private BankTransactionService bankTransactionService;
-
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    private MockMultipartFile mockMultipartFile;
+
+    @Autowired
+    private Environment env;
 
     @BeforeEach
-    void tearDown() throws IOException {
-        FileUtils.deleteDirectory(new File("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/"));
+    void setup() throws IOException {
+        FileUtils.deleteDirectory(new File(absoluteTestDataPath));
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
         ArrayList<String> bankAccountNumbers = new ArrayList<>();
@@ -59,67 +63,51 @@ class BankTransactionServiceTest {
         bankAccountNumbers.add("JHADD54");
 
         createTestBankAccounts(bankAccountNumbers, bankAccountRepository);
+
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        List<BankTransaction> bankOperations = new ArrayList<>();
+        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2002-03-14", dateTimeFormatter).atStartOfDay())
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.valueOf(20))
+            .currency("EUR")
+            .build());
+        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2019-03-14", dateTimeFormatter).atStartOfDay())
+            .beneficiary("Jane Doe")
+            .amount(BigDecimal.TEN)
+            .isWithdrawal(true)
+            .currency("USD")
+            .build());
+        bankOperations.add(BankTransaction.builder().accountNumber("JHADD54").transactionDate(LocalDate.parse("2004-03-14", dateTimeFormatter).atStartOfDay())
+            .beneficiary("Joe Doe")
+            .amount(BigDecimal.TEN)
+            .currency("USD")
+            .build());
+
+        createTestBankTransactionData(bankOperations, env);
+
+        mockMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("testDataFile.path"))).toAbsolutePath()));
     }
 
     @Test
     void importsBankStatementFromCsvFileSuccessfully() throws IOException {
-        List<BankTransaction> bankOperations = new ArrayList<>();
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDateTime.now())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.valueOf(20))
-            .currency("EUR")
-            .build());
-        bankOperations.add(BankTransaction.builder().accountNumber("JHADD54").transactionDate(LocalDateTime.now())
-            .beneficiary("Joe Doe")
-            .amount(BigDecimal.TEN)
-            .currency("USD")
-            .isWithdrawal(true)
-            .build());
-
-        createTestBankTransactionData(bankOperations);
-
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test-data.csv", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
-
-        bankTransactionService.importCSV(mockitoMultipartFile);
+        bankTransactionService.importCSV(mockMultipartFile);
 
         List<BankTransaction> importedTransactions = bankTransactionRepository.findAll();
 
-        assertEquals(2, importedTransactions.size());
+        assertEquals(3, importedTransactions.size());
         assertEquals("TSG54SA", importedTransactions.get(0).getAccountNumber());
-        assertEquals("JHADD54", importedTransactions.get(1).getAccountNumber());
+        assertEquals("TSG54SA", importedTransactions.get(1).getAccountNumber());
+        assertEquals("JHADD54", importedTransactions.get(2).getAccountNumber());
+        assertEquals(BigDecimal.valueOf(20), importedTransactions.get(0).getAmount());
+        assertEquals(BigDecimal.TEN.negate(), importedTransactions.get(1).getAmount());
+
     }
 
     @Test
-    void exportsSingleAccountBankStatementToCsvFileSuccessfully() throws IOException, ParseException {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        List<BankTransaction> bankOperations = new ArrayList<>();
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2002-03-14", df).atStartOfDay())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.valueOf(20))
-            .currency("EUR")
-            .build());
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2019-03-14", df).atStartOfDay())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.TEN)
-            .currency("USD")
-            .build());
-        bankOperations.add(BankTransaction.builder().accountNumber("JHADD54").transactionDate(LocalDate.parse("2004-03-14", df).atStartOfDay())
-            .beneficiary("Joe Doe")
-            .amount(BigDecimal.TEN)
-            .currency("USD")
-            .isWithdrawal(true)
-            .build());
-
-        createTestBankTransactionData(bankOperations);
-
-
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test-data.csv", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
-
-        bankTransactionService.importCSV(mockitoMultipartFile);
-
+    void exportsSingleAccountBankStatementToCsvFileSuccessfully() throws IOException {
+        bankTransactionService.importCSV(mockMultipartFile);
 
         List<String> accountNumbers = new ArrayList<>();
-
 
         accountNumbers.add("TSG54SA");
 
@@ -130,32 +118,8 @@ class BankTransactionServiceTest {
     }
 
     @Test
-    void exportsMultipleAccountBankStatementsToCsvFileSuccessfully() throws IOException, ParseException {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        List<BankTransaction> bankOperations = new ArrayList<>();
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2002-03-14", df).atStartOfDay())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.valueOf(20))
-            .currency("EUR")
-            .build());
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2019-03-14", df).atStartOfDay())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.TEN)
-            .currency("USD")
-            .build());
-        bankOperations.add(BankTransaction.builder().accountNumber("JHADD54").transactionDate(LocalDate.parse("2004-03-14", df).atStartOfDay())
-            .beneficiary("Joe Doe")
-            .amount(BigDecimal.TEN)
-            .currency("USD")
-            .isWithdrawal(true)
-            .build());
-
-        createTestBankTransactionData(bankOperations);
-
-
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test-data.csv", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
-
-        bankTransactionService.importCSV(mockitoMultipartFile);
+    void exportsMultipleAccountBankStatementsToCsvFileSuccessfully() throws IOException {
+        bankTransactionService.importCSV(mockMultipartFile);
 
 
         List<String> accountNumbers = new ArrayList<>();
@@ -172,30 +136,11 @@ class BankTransactionServiceTest {
 
     @Test
     void calculatesBalanceSuccessfully() throws IOException, ParseException {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        bankTransactionService.importCSV(mockMultipartFile);
 
-        List<BankTransaction> bankOperations = new ArrayList<>();
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2004-03-14", df).atStartOfDay())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.valueOf(20))
-            .currency("EUR")
-            .build());
-        bankOperations.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDate.parse("2019-03-14", df).atStartOfDay())
-            .beneficiary("Jane Doe")
-            .amount(BigDecimal.TEN)
-            .isWithdrawal(true)
-            .currency("USD")
-            .build());
+        BigDecimal balance = bankTransactionService.calculateAccountBalance("TSG54SA", "2001-05-06", "2022-08-06");
 
-        createTestBankTransactionData(bankOperations);
-
-        MockMultipartFile mockitoMultipartFile = new MockMultipartFile("test-data.csv", Files.newInputStream(Paths.get("/Users/evita/inventi-homework/src/test/java/com/inventi/homework/data/test-data.csv")));
-
-        bankTransactionService.importCSV(mockitoMultipartFile);
-
-        BigDecimal bd = bankTransactionService.calculateAccountBalance("TSG54SA", "2001-05-06", "2022-08-06");
-
-        assertEquals(BigDecimal.TEN, bd);
+        assertEquals(BigDecimal.TEN, balance);
     }
 
 }
