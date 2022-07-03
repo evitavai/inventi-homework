@@ -39,7 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public
 class BankTransactionServiceTest {
 
-    static public final String absoluteTestDataPath = new File("./data/").getAbsolutePath();
     @Autowired
     private BankTransactionRepository bankTransactionRepository;
     @Autowired
@@ -58,7 +57,7 @@ class BankTransactionServiceTest {
 
     @BeforeEach
     void setup() throws IOException {
-        FileUtils.deleteDirectory(new File(absoluteTestDataPath));
+        FileUtils.deleteDirectory(new File(new File("src/test/java/com/inventi/homework/data").getAbsolutePath())); //deletes all data from test file directory before each test
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
         List.of("TSG54SA", "JHADD54").forEach((accountNumber) -> {

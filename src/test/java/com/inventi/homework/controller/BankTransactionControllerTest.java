@@ -41,7 +41,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.inventi.homework.service.BankTransactionServiceTest.absoluteTestDataPath;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,12 +69,11 @@ class BankTransactionControllerTest {
     @Autowired
     BankAccountRepository bankAccountRepository;
     private MockMultipartFile mockInputMultipartFile;
-    private MockMultipartFile mockOutputMultipartFile;
 
     @BeforeEach
     void setup() throws IOException {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
-        FileUtils.deleteDirectory(new File(absoluteTestDataPath)); //deletes all data from test file directory before each test
+        FileUtils.deleteDirectory(new File(new File("src/test/java/com/inventi/homework/data").getAbsolutePath())); //deletes all data from test file directory before each test
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -100,7 +98,6 @@ class BankTransactionControllerTest {
         testHelper.createTestBankTransactionData(bankTransactions);
 
         mockInputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("testDataFile.path"))).toAbsolutePath()));
-        mockOutputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("outputFile.path"))).toAbsolutePath()));
     }
 
     @Test
@@ -128,6 +125,7 @@ class BankTransactionControllerTest {
             )
             .andExpect(status().is(200));
 
+        MockMultipartFile mockOutputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("outputFile.path"))).toAbsolutePath()));
         InputStreamReader streamReader = new InputStreamReader(mockOutputMultipartFile.getInputStream(), StandardCharsets.UTF_8);
         CsvToBean<BankTransaction> csvToBean = new CsvToBeanBuilder<BankTransaction>(streamReader)
             .withType(BankTransaction.class)
