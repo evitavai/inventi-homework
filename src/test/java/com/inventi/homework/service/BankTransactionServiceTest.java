@@ -1,7 +1,9 @@
 package com.inventi.homework.service;
 
 import com.inventi.homework.helpers.TestHelper;
+import com.inventi.homework.model.BankAccount;
 import com.inventi.homework.model.BankTransaction;
+import com.inventi.homework.repository.BankAccountRepository;
 import com.inventi.homework.repository.BankTransactionRepository;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,8 @@ class BankTransactionServiceTest {
     @Autowired
     private BankTransactionService bankTransactionService;
     @Autowired
+    private BankAccountRepository bankAccountRepository;
+    @Autowired
     private JdbcTemplate jdbcTemplate;
     private MockMultipartFile mockMultipartFile;
 
@@ -57,9 +61,9 @@ class BankTransactionServiceTest {
         FileUtils.deleteDirectory(new File(absoluteTestDataPath));
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
-        var bankAccountNumbers = List.of("TSG54SA", "JHADD54");
-
-        testHelper.createTestBankAccounts(bankAccountNumbers);
+        List.of("TSG54SA", "JHADD54").forEach((accountNumber) -> {
+            bankAccountRepository.saveAndFlush(BankAccount.builder().accountNumber(accountNumber).build());
+        });
 
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         List<BankTransaction> bankOperations = new ArrayList<>();

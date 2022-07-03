@@ -45,24 +45,25 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     public void importCSV(MultipartFile file) {
         try {
             log.debug("Starting to read file {}", file.getName());
-            InputStreamReader streamReader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
-            CsvToBean<BankTransaction> csvToBean = new CsvToBeanBuilder<BankTransaction>(streamReader)
-                .withType(BankTransaction.class)
-                .withSkipLines(1)
-                .withIgnoreLeadingWhiteSpace(true)
-                .build();
+            try (InputStreamReader streamReader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
+                CsvToBean<BankTransaction> csvToBean = new CsvToBeanBuilder<BankTransaction>(streamReader)
+                    .withType(BankTransaction.class)
+                    .withSkipLines(1)
+                    .withIgnoreLeadingWhiteSpace(true)
+                    .build();
 
-            List<BankTransaction> bankTransactionList = csvToBean.parse();
+                List<BankTransaction> bankTransactionList = csvToBean.parse();
 
-            bankTransactionList.forEach((bankTransaction) -> {
-                bankTransactionHelper.checkExistingBankTransaction(bankTransaction);
-                if (bankTransaction.isWithdrawal()) {
-                    bankTransaction.setAmount(bankTransaction.getAmount().negate());
-                }
-            });
+                bankTransactionList.forEach((bankTransaction) -> {
+                    bankTransactionHelper.checkExistingBankTransaction(bankTransaction);
+                    if (bankTransaction.isWithdrawal()) {
+                        bankTransaction.setAmount(bankTransaction.getAmount().negate());
+                    }
+                });
 
-            bankTransactionRepository.saveAll(bankTransactionList);
-            log.debug("File data saved successfully!");
+                bankTransactionRepository.saveAll(bankTransactionList);
+                log.debug("File data saved successfully!");
+            }
 
         } catch (IOException e) {
             log.error("Unable to read or parse data", e);
@@ -127,10 +128,8 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             log.debug("Adding up amounts...");
             BigDecimal sum = BigDecimal.ZERO;
 
-            if (existingBankTransactions.isPresent()) {
-                for (BankTransaction amt : existingBankTransactions.orElseThrow(() -> new Exception("No bank transactions found"))) {
-                    sum = sum.add(amt.getAmount());
-                }
+            for (BankTransaction bankTransaction : existingBankTransactions.orElseThrow(() -> new Exception("No bank transactions found"))) {
+                sum = sum.add(bankTransaction.getAmount());
             }
 
             log.debug("Transaction balance sum = {}", sum);

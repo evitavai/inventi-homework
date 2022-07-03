@@ -2,7 +2,9 @@ package com.inventi.homework.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inventi.homework.helpers.TestHelper;
+import com.inventi.homework.model.BankAccount;
 import com.inventi.homework.model.BankTransaction;
+import com.inventi.homework.repository.BankAccountRepository;
 import com.inventi.homework.repository.BankTransactionRepository;
 import com.inventi.homework.service.BankTransactionService;
 import com.opencsv.bean.CsvToBean;
@@ -64,6 +66,9 @@ class BankTransactionControllerTest {
     private Environment env;
     @Autowired
     private WebApplicationContext webApplicationContext;
+
+    @Autowired
+    BankAccountRepository bankAccountRepository;
     private MockMultipartFile mockInputMultipartFile;
     private MockMultipartFile mockOutputMultipartFile;
 
@@ -75,9 +80,9 @@ class BankTransactionControllerTest {
 
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        var bankAccountNumbers = List.of("TSG54SA", "JHADD54");
-
-        testHelper.createTestBankAccounts(bankAccountNumbers);
+        List.of("TSG54SA", "JHADD54").forEach((accountNumber) -> {
+            bankAccountRepository.saveAndFlush(BankAccount.builder().accountNumber(accountNumber).build());
+        });
 
         List<BankTransaction> bankTransactions = new ArrayList<>();
         bankTransactions.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDateTime.now())

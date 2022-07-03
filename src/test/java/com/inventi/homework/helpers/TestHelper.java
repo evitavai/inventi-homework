@@ -1,8 +1,6 @@
 package com.inventi.homework.helpers;
 
-import com.inventi.homework.model.BankAccount;
 import com.inventi.homework.model.BankTransaction;
-import com.inventi.homework.repository.BankAccountRepository;
 import com.opencsv.CSVWriter;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,15 +19,7 @@ import java.util.Objects;
 @Component
 public class TestHelper {
 
-    private final BankAccountRepository bankAccountRepository;
-
     private final Environment env;
-
-    public void createTestBankAccounts(List<String> accountNumbers) {
-        accountNumbers.forEach((accountNumber) -> {
-            bankAccountRepository.saveAndFlush(BankAccount.builder().accountNumber(accountNumber).build());
-        });
-    }
 
     public void createTestBankTransactionData(List<BankTransaction> bankAccountTransactions) {
         try {
