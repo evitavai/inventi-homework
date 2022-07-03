@@ -22,11 +22,10 @@ public class TestHelper {
     private final Environment env;
 
     public void createTestBankTransactionData(List<BankTransaction> bankAccountTransactions) {
-        try {
-            File csvOutputFile = new File(Objects.requireNonNull(env.getProperty("testDataFile.path")));
-            csvOutputFile.getParentFile().mkdirs();
+        File csvOutputFile = new File(Objects.requireNonNull(env.getProperty("testDataFile.path")));
+        csvOutputFile.getParentFile().mkdirs();
 
-            CSVWriter csvWriter = new CSVWriter(new FileWriter(csvOutputFile));
+        try (CSVWriter csvWriter = new CSVWriter(new FileWriter(csvOutputFile))) {
             String[] header = {"account_number", "operation_date", "beneficiary", "comment", "amount", "currency", "is_withdrawal"};
             csvWriter.writeNext(header);
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -36,7 +35,6 @@ public class TestHelper {
                     bankTransaction.getBeneficiary(), bankTransaction.getComment(), String.valueOf(bankTransaction.getAmount()), bankTransaction.getCurrency(), String.valueOf(bankTransaction.isWithdrawal())};
                 csvWriter.writeNext(csvData);
             }
-            csvWriter.close();
         } catch (IOException e) {
             log.error("Unable to read or parse data", e);
         }

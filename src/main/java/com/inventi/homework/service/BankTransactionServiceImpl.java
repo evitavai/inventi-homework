@@ -126,11 +126,10 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             Optional<List<BankTransaction>> existingBankTransactions = bankTransactionRepository.findByAccountBalancesBetween(accountNumber, formattedDateFrom, formattedDateTo, pageable);
 
             log.debug("Adding up amounts...");
-            BigDecimal sum = BigDecimal.ZERO;
 
-            for (BankTransaction bankTransaction : existingBankTransactions.orElseThrow(() -> new Exception("No bank transactions found"))) {
-                sum = sum.add(bankTransaction.getAmount());
-            }
+            BigDecimal sum = existingBankTransactions.orElseThrow(() -> new Exception("No bank transactions found"))
+                .stream().map(BankTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             log.debug("Transaction balance sum = {}", sum);
             return sum;
