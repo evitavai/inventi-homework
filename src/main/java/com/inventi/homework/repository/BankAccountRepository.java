@@ -1,6 +1,6 @@
 package com.inventi.homework.repository;
 
-import com.inventi.homework.entity.BankAccount;
+import com.inventi.homework.model.BankAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

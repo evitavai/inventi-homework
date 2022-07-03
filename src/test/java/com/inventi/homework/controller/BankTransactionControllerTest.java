@@ -1,7 +1,7 @@
 package com.inventi.homework.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.inventi.homework.entity.BankTransaction;
+import com.inventi.homework.model.BankTransaction;
 import com.inventi.homework.repository.BankAccountRepository;
 import com.inventi.homework.repository.BankTransactionRepository;
 import com.inventi.homework.service.BankTransactionService;
@@ -39,8 +39,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.inventi.homework.helpers.TestHelpers.createTestBankAccounts;
-import static com.inventi.homework.helpers.TestHelpers.createTestBankTransactionData;
+import static com.inventi.homework.helpers.TestHelper.createTestBankAccounts;
+import static com.inventi.homework.helpers.TestHelper.createTestBankTransactionData;
 import static com.inventi.homework.service.BankTransactionServiceTest.absoluteTestDataPath;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,25 +60,22 @@ class BankTransactionControllerTest {
     private JdbcTemplate jdbcTemplate;
     @Autowired
     private MockMvc mockMvc;
-
     @Autowired
     private Environment env;
     @Autowired
     private WebApplicationContext webApplicationContext;
-
-    private MockMultipartFile mockMultipartFile;
+    private MockMultipartFile mockInputMultipartFile;
+    private MockMultipartFile mockOutputMultipartFile;
 
     @BeforeEach
     void setup() throws IOException {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
-        FileUtils.deleteDirectory(new File(absoluteTestDataPath));
+        FileUtils.deleteDirectory(new File(absoluteTestDataPath)); //deletes all data from test file directory before each test
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        ArrayList<String> bankAccountNumbers = new ArrayList<>();
-        bankAccountNumbers.add("TSG54SA");
-        bankAccountNumbers.add("JHADD54");
+        var bankAccountNumbers = List.of("TSG54SA", "JHADD54");
 
         createTestBankAccounts(bankAccountNumbers, bankAccountRepository);
 
@@ -97,16 +94,17 @@ class BankTransactionControllerTest {
 
         createTestBankTransactionData(bankTransactions, env);
 
-        mockMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("testDataFile.path"))).toAbsolutePath()));
+        mockInputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("testDataFile.path"))).toAbsolutePath()));
+        mockOutputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("outputFile.path"))).toAbsolutePath()));
     }
 
     @Test
     void importsBankStatementFromCsvFileSuccessfully() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.multipart("/api/import")
-                .file(mockMultipartFile))
+                .file(mockInputMultipartFile))
             .andExpect(status().is(200));
 
-        List<BankTransaction> importedTransactions = bankTransactionRepository.findAll();
+        List<BankTransaction> importedTransactions = (List<BankTransaction>) bankTransactionRepository.findAll();
 
         assertEquals(2, importedTransactions.size());
         assertEquals("TSG54SA", importedTransactions.get(0).getAccountNumber());
@@ -115,7 +113,7 @@ class BankTransactionControllerTest {
 
     @Test
     void exportsBankStatementToCsvFileSuccessfully() throws Exception {
-        bankTransactionService.importCSV(mockMultipartFile);
+        bankTransactionService.importCSV(mockInputMultipartFile);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/export")
                 .param("accountNumbers", "TSG54SA")
@@ -125,7 +123,7 @@ class BankTransactionControllerTest {
             )
             .andExpect(status().is(200));
 
-        InputStreamReader streamReader = new InputStreamReader(mockMultipartFile.getInputStream(), StandardCharsets.UTF_8);
+        InputStreamReader streamReader = new InputStreamReader(mockOutputMultipartFile.getInputStream(), StandardCharsets.UTF_8);
         CsvToBean<BankTransaction> csvToBean = new CsvToBeanBuilder<BankTransaction>(streamReader)
             .withType(BankTransaction.class)
             .withSkipLines(1)
@@ -134,19 +132,34 @@ class BankTransactionControllerTest {
 
         List<BankTransaction> bankTransactionList = csvToBean.parse();
 
-        assertEquals(2, bankTransactionList.size());
+        assertEquals(1, bankTransactionList.size());
         assertEquals("TSG54SA", bankTransactionList.get(0).getAccountNumber());
-        assertEquals("JHADD54", bankTransactionList.get(1).getAccountNumber());
     }
 
     @Test
     void calculatesBalanceSuccessfully() throws Exception {
-        bankTransactionService.importCSV(mockMultipartFile);
+        bankTransactionService.importCSV(mockInputMultipartFile);
 
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.get("/api/balance")
                 .param("accountNumber", "TSG54SA")
                 .param("dateFrom", "2001-05-06")
                 .param("dateTo", "2022-08-06")
+            )
+            .andExpect(status().is(200))
+            .andReturn();
+
+        BigDecimal balance = objectMapper.readValue(result.getResponse().getContentAsString(),
+            BigDecimal.class);
+
+        assertEquals(BigDecimal.valueOf(50), balance);
+    }
+
+    @Test
+    void calculatesBalanceWithoutDatesSuccessfully() throws Exception {
+        bankTransactionService.importCSV(mockInputMultipartFile);
+
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.get("/api/balance")
+                .param("accountNumber", "TSG54SA")
             )
             .andExpect(status().is(200))
             .andReturn();

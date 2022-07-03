@@ -1,17 +1,17 @@
 package com.inventi.homework.service;
 
-import com.inventi.homework.model.BankTransactionStatementModel;
+import com.inventi.homework.controller.requestdto.BankTransactionStatementParams;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.ParseException;
 
 public interface BankTransactionService {
 
-    void importCSV(MultipartFile file) throws IOException;
+    void importCSV(MultipartFile file);
 
-    void exportCSV(BankTransactionStatementModel bankAccountStatementForm);
+    void exportCSV(BankTransactionStatementParams bankAccountStatementForm, Pageable pageable);
 
-    BigDecimal calculateAccountBalance(String accountNumber, String dateFrom, String dateTo) throws ParseException;
+    BigDecimal calculateAccountBalance(String accountNumber, String dateFrom, String dateTo, Pageable pageable) throws ParseException;
 }

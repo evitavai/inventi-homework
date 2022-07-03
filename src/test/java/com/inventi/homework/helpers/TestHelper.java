@@ -1,7 +1,7 @@
 package com.inventi.homework.helpers;
 
-import com.inventi.homework.entity.BankAccount;
-import com.inventi.homework.entity.BankTransaction;
+import com.inventi.homework.model.BankAccount;
+import com.inventi.homework.model.BankTransaction;
 import com.inventi.homework.repository.BankAccountRepository;
 import com.opencsv.CSVWriter;
 import lombok.AllArgsConstructor;
@@ -12,15 +12,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 @AllArgsConstructor
 @Slf4j
-public class TestHelpers {
+public class TestHelper {
 
-    public static void createTestBankAccounts(ArrayList<String> accountNumbers, BankAccountRepository bankAccountRepository) {
+    public static void createTestBankAccounts(List<String> accountNumbers, BankAccountRepository bankAccountRepository) {
         accountNumbers.forEach((accountNumber) -> {
             bankAccountRepository.saveAndFlush(BankAccount.builder().accountNumber(accountNumber).build());
         });

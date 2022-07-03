@@ -1,4 +1,4 @@
-package com.inventi.homework.entity;
+package com.inventi.homework.model;
 
 import lombok.*;
 

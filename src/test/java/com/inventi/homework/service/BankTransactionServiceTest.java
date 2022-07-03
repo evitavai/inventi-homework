@@ -1,7 +1,6 @@
 package com.inventi.homework.service;
 
-import com.inventi.homework.entity.BankTransaction;
-import com.inventi.homework.model.BankTransactionStatementModel;
+import com.inventi.homework.model.BankTransaction;
 import com.inventi.homework.repository.BankAccountRepository;
 import com.inventi.homework.repository.BankTransactionRepository;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
@@ -12,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -29,8 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.inventi.homework.helpers.TestHelpers.createTestBankAccounts;
-import static com.inventi.homework.helpers.TestHelpers.createTestBankTransactionData;
+import static com.inventi.homework.helpers.TestHelper.createTestBankAccounts;
+import static com.inventi.homework.helpers.TestHelper.createTestBankTransactionData;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(SpringExtension.class)
@@ -58,9 +58,7 @@ class BankTransactionServiceTest {
         FileUtils.deleteDirectory(new File(absoluteTestDataPath));
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "bank_account_transactions", "bank_accounts");//deletes all data from table before each test
 
-        ArrayList<String> bankAccountNumbers = new ArrayList<>();
-        bankAccountNumbers.add("TSG54SA");
-        bankAccountNumbers.add("JHADD54");
+        var bankAccountNumbers = List.of("TSG54SA", "JHADD54");
 
         createTestBankAccounts(bankAccountNumbers, bankAccountRepository);
 
@@ -89,10 +87,10 @@ class BankTransactionServiceTest {
     }
 
     @Test
-    void importsBankStatementFromCsvFileSuccessfully() throws IOException {
+    void importsBankStatementFromCsvFileSuccessfully() {
         bankTransactionService.importCSV(mockMultipartFile);
 
-        List<BankTransaction> importedTransactions = bankTransactionRepository.findAll();
+        List<BankTransaction> importedTransactions = (List<BankTransaction>) bankTransactionRepository.findAll();
 
         assertEquals(3, importedTransactions.size());
         assertEquals("TSG54SA", importedTransactions.get(0).getAccountNumber());
@@ -104,41 +102,10 @@ class BankTransactionServiceTest {
     }
 
     @Test
-    void exportsSingleAccountBankStatementToCsvFileSuccessfully() throws IOException {
+    void calculatesBalanceSuccessfully() throws ParseException {
         bankTransactionService.importCSV(mockMultipartFile);
 
-        List<String> accountNumbers = new ArrayList<>();
-
-        accountNumbers.add("TSG54SA");
-
-        BankTransactionStatementModel bm = BankTransactionStatementModel.builder().accountNumber(accountNumbers).dateFrom("2001-05-06").dateTo("2022-08-06").build();
-
-
-        bankTransactionService.exportCSV(bm);
-    }
-
-    @Test
-    void exportsMultipleAccountBankStatementsToCsvFileSuccessfully() throws IOException {
-        bankTransactionService.importCSV(mockMultipartFile);
-
-
-        List<String> accountNumbers = new ArrayList<>();
-
-
-        accountNumbers.add("TSG54SA");
-        accountNumbers.add("JHADD54");
-
-        BankTransactionStatementModel bm = BankTransactionStatementModel.builder().accountNumber(accountNumbers).dateFrom("2001-05-06").dateTo("2022-08-06").build();
-
-
-        bankTransactionService.exportCSV(bm);
-    }
-
-    @Test
-    void calculatesBalanceSuccessfully() throws IOException, ParseException {
-        bankTransactionService.importCSV(mockMultipartFile);
-
-        BigDecimal balance = bankTransactionService.calculateAccountBalance("TSG54SA", "2001-05-06", "2022-08-06");
+        BigDecimal balance = bankTransactionService.calculateAccountBalance("TSG54SA", "2001-05-06", "2022-08-06", PageRequest.of(0, 5));
 
         assertEquals(BigDecimal.TEN, balance);
     }

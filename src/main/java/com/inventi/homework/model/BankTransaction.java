@@ -1,4 +1,4 @@
-package com.inventi.homework.entity;
+package com.inventi.homework.model;
 
 import com.opencsv.bean.CsvBindByPosition;
 import com.opencsv.bean.CsvDate;

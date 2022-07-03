@@ -1,11 +1,15 @@
-CREATE TABLE IF NOT EXISTS "bank_accounts"
+DROP TABLE IF EXISTS "bank_account_transactions";
+
+DROP TABLE IF EXISTS "bank_accounts";
+
+CREATE TABLE "bank_accounts"
 (
     id             BIGINT      NOT NULL GENERATED ALWAYS AS IDENTITY,
     account_number VARCHAR(32) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "bank_account_transactions"
+CREATE TABLE "bank_account_transactions"
 (
     id               BIGINT       NOT NULL GENERATED ALWAYS AS IDENTITY,
     account_number   VARCHAR(32)  NOT NULL,
@@ -21,3 +25,9 @@ CREATE TABLE IF NOT EXISTS "bank_account_transactions"
 ALTER TABLE "bank_account_transactions"
     ADD CONSTRAINT ACCOUNT_BALANCE_ACCOUNT_NUMBER_FK
         FOREIGN KEY (account_number) REFERENCES "bank_accounts" (account_number);
+
+INSERT INTO "bank_accounts"
+    (account_number)
+VALUES ('KDHJD54'),
+       ('HUJAHUD54'),
+       ('THBVSJ4');

@@ -1,0 +1,6 @@
+"account_number","operation_date","beneficiary","comment","amount","currency","is_withdrawal"
+"KDHJD54","2002-03-14 00:00:00","Jane Doe",,"20","EUR","false"
+"KDHJD54","2019-03-14 00:00:00","Jane Doe",,"10","USD","true"
+"HUJAHUD54","2004-03-14 00:00:00","Joe Doe",,"10","USD","false"
+"THBVSJ4","2015-06-14 00:00:00","Tom Doe",,"80","USD","false"
+"THBVSJ4","2015-06-15 00:00:00","Tom Doe",,"60","USD","true"

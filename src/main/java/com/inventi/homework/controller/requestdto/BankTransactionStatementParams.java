@@ -1,4 +1,4 @@
-package com.inventi.homework.model;
+package com.inventi.homework.controller.requestdto;
 
 import lombok.*;
 
@@ -9,7 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BankTransactionStatementModel {
+public class BankTransactionStatementParams {
     @NonNull
     private List<String> accountNumber;
 

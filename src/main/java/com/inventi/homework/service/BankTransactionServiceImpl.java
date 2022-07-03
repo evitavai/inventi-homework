@@ -1,7 +1,7 @@
 package com.inventi.homework.service;
 
-import com.inventi.homework.entity.BankTransaction;
-import com.inventi.homework.model.BankTransactionStatementModel;
+import com.inventi.homework.controller.requestdto.BankTransactionStatementParams;
+import com.inventi.homework.model.BankTransaction;
 import com.inventi.homework.repository.BankTransactionRepository;
 import com.opencsv.CSVWriter;
 import com.opencsv.bean.CsvToBean;
@@ -9,6 +9,7 @@ import com.opencsv.bean.CsvToBeanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,7 +28,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.inventi.homework.helpers.BankTransactionHelpers.checkExistingBankTransaction;
+import static com.inventi.homework.helpers.BankTransactionHelper.checkExistingBankTransaction;
 
 @Service
 @RequiredArgsConstructor
@@ -59,7 +60,6 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             });
 
             bankTransactionRepository.saveAll(bankTransactionList);
-
             log.debug("File data saved successfully!");
 
         } catch (IOException e) {
@@ -69,7 +69,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     }
 
     @Override
-    public void exportCSV(BankTransactionStatementModel bankAccountStatement) {
+    public void exportCSV(BankTransactionStatementParams bankAccountStatement, Pageable pageable) {
         try {
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             LocalDateTime formattedDateFrom = LocalDate.parse(bankAccountStatement.getDateFrom(), dateFormatter).atStartOfDay();
@@ -78,11 +78,8 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             List<Optional<List<BankTransaction>>> bankTransactionList = new ArrayList<>();
 
             bankAccountStatement.getAccountNumber().forEach((accountNumber) -> {
-
                 log.debug("Retrieving bank transactions for accountNumber {} between dates {} and {}", accountNumber, formattedDateFrom, formattedDateTo);
-
-
-                Optional<List<BankTransaction>> existingBankTransactions = bankTransactionRepository.findByAccountBalancesBetween(accountNumber, formattedDateFrom, formattedDateTo);
+                Optional<List<BankTransaction>> existingBankTransactions = bankTransactionRepository.findByAccountBalancesBetween(accountNumber, formattedDateFrom, formattedDateTo, pageable);
                 existingBankTransactions.ifPresent((bankTransactions) -> bankTransactionList.add(Optional.of(bankTransactions)));
             });
 
@@ -91,9 +88,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             csvOutputFile.getParentFile().mkdirs();
 
             log.debug("Starting to write data into an output file {}", csvOutputFile);
-
-
-            CSVWriter csvWriter = new CSVWriter(new FileWriter(csvOutputFile));
+            CSVWriter csvWriter = new CSVWriter(new FileWriter(String.valueOf(csvOutputFile)));
 
             String[] header = {"account_number", "operation_date", "beneficiary", "comment", "amount", "currency", "is_withdrawal"};
             csvWriter.writeNext(header);
@@ -103,7 +98,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
                 .stream()
                 .flatMap(Optional::stream)
                 .findFirst().orElseThrow(() -> new Exception("No bank transactions found"))) {
-                data = new String[]{String.valueOf(s.getAccountNumber()), String.valueOf(s.getTransactionDate()),
+                data = new String[]{String.valueOf(s.getAccountNumber()), s.getTransactionDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                     s.getBeneficiary(), s.getComment(), String.valueOf(s.getAmount()), s.getCurrency(), String.valueOf(s.isWithdrawal())};
                 csvWriter.writeNext(data);
             }
@@ -117,20 +112,17 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     }
 
     @Override
-    public BigDecimal calculateAccountBalance(String accountNumber, String dateFrom, String dateTo) throws ParseException {
+    public BigDecimal calculateAccountBalance(String accountNumber, String dateFrom, String dateTo, Pageable pageable) throws ParseException {
         try {
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             LocalDateTime formattedDateFrom = LocalDate.parse(dateFrom, dateFormatter).atStartOfDay();
             LocalDateTime formattedDateTo = LocalDate.parse(dateTo, dateFormatter).atStartOfDay();
 
             log.debug("Retrieving bank transactions for accountNumber {} between dates {} and {}", accountNumber, formattedDateFrom, formattedDateTo);
-
-            Optional<List<BankTransaction>> existingBankTransactions = bankTransactionRepository.findByAccountBalancesBetween(accountNumber, formattedDateFrom, formattedDateTo);
-
-            BigDecimal sum = BigDecimal.ZERO;
+            Optional<List<BankTransaction>> existingBankTransactions = bankTransactionRepository.findByAccountBalancesBetween(accountNumber, formattedDateFrom, formattedDateTo, pageable);
 
             log.debug("Adding up amounts...");
-
+            BigDecimal sum = BigDecimal.ZERO;
 
             if (existingBankTransactions.isPresent()) {
                 for (BankTransaction amt : existingBankTransactions.orElseThrow(() -> new Exception("No bank transactions found"))) {
@@ -139,11 +131,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             }
 
             log.debug("Transaction balance sum = {}", sum);
-
-
             return sum;
-
-
         } catch (Exception e) {
             log.error("Unable to parse data", e);
             throw new ParseException("Error while parsing given date", 0);
