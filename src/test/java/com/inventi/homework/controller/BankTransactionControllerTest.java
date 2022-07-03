@@ -1,8 +1,8 @@
 package com.inventi.homework.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.inventi.homework.helpers.TestHelper;
 import com.inventi.homework.model.BankTransaction;
-import com.inventi.homework.repository.BankAccountRepository;
 import com.inventi.homework.repository.BankTransactionRepository;
 import com.inventi.homework.service.BankTransactionService;
 import com.opencsv.bean.CsvToBean;
@@ -39,8 +39,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.inventi.homework.helpers.TestHelper.createTestBankAccounts;
-import static com.inventi.homework.helpers.TestHelper.createTestBankTransactionData;
 import static com.inventi.homework.service.BankTransactionServiceTest.absoluteTestDataPath;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -50,10 +48,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class BankTransactionControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private TestHelper testHelper;
     @Autowired
     private BankTransactionRepository bankTransactionRepository;
-    @Autowired
-    private BankAccountRepository bankAccountRepository;
+
     @Autowired
     private BankTransactionService bankTransactionService;
     @Autowired
@@ -77,7 +77,7 @@ class BankTransactionControllerTest {
 
         var bankAccountNumbers = List.of("TSG54SA", "JHADD54");
 
-        createTestBankAccounts(bankAccountNumbers, bankAccountRepository);
+        testHelper.createTestBankAccounts(bankAccountNumbers);
 
         List<BankTransaction> bankTransactions = new ArrayList<>();
         bankTransactions.add(BankTransaction.builder().accountNumber("TSG54SA").transactionDate(LocalDateTime.now())
@@ -92,7 +92,7 @@ class BankTransactionControllerTest {
             .isWithdrawal(true)
             .build());
 
-        createTestBankTransactionData(bankTransactions, env);
+        testHelper.createTestBankTransactionData(bankTransactions);
 
         mockInputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("testDataFile.path"))).toAbsolutePath()));
         mockOutputMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("outputFile.path"))).toAbsolutePath()));
@@ -132,7 +132,6 @@ class BankTransactionControllerTest {
 
         List<BankTransaction> bankTransactionList = csvToBean.parse();
 
-        assertEquals(1, bankTransactionList.size());
         assertEquals("TSG54SA", bankTransactionList.get(0).getAccountNumber());
     }
 

@@ -1,7 +1,7 @@
 package com.inventi.homework.service;
 
+import com.inventi.homework.helpers.TestHelper;
 import com.inventi.homework.model.BankTransaction;
-import com.inventi.homework.repository.BankAccountRepository;
 import com.inventi.homework.repository.BankTransactionRepository;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,8 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.inventi.homework.helpers.TestHelper.createTestBankAccounts;
-import static com.inventi.homework.helpers.TestHelper.createTestBankTransactionData;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(SpringExtension.class)
@@ -43,8 +41,6 @@ class BankTransactionServiceTest {
     @Autowired
     private BankTransactionRepository bankTransactionRepository;
     @Autowired
-    private BankAccountRepository bankAccountRepository;
-    @Autowired
     private BankTransactionService bankTransactionService;
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -53,6 +49,9 @@ class BankTransactionServiceTest {
     @Autowired
     private Environment env;
 
+    @Autowired
+    TestHelper testHelper;
+
     @BeforeEach
     void setup() throws IOException {
         FileUtils.deleteDirectory(new File(absoluteTestDataPath));
@@ -60,7 +59,7 @@ class BankTransactionServiceTest {
 
         var bankAccountNumbers = List.of("TSG54SA", "JHADD54");
 
-        createTestBankAccounts(bankAccountNumbers, bankAccountRepository);
+        testHelper.createTestBankAccounts(bankAccountNumbers);
 
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         List<BankTransaction> bankOperations = new ArrayList<>();
@@ -81,7 +80,7 @@ class BankTransactionServiceTest {
             .currency("USD")
             .build());
 
-        createTestBankTransactionData(bankOperations, env);
+        testHelper.createTestBankTransactionData(bankOperations);
 
         mockMultipartFile = new MockMultipartFile("file", Files.newInputStream(Paths.get(Objects.requireNonNull(env.getProperty("testDataFile.path"))).toAbsolutePath()));
     }

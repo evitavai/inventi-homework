@@ -1,6 +1,7 @@
 package com.inventi.homework.service;
 
 import com.inventi.homework.controller.requestdto.BankTransactionStatementParams;
+import com.inventi.homework.helpers.BankTransactionHelper;
 import com.inventi.homework.model.BankTransaction;
 import com.inventi.homework.repository.BankTransactionRepository;
 import com.opencsv.CSVWriter;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.inventi.homework.helpers.BankTransactionHelper.checkExistingBankTransaction;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +38,8 @@ public class BankTransactionServiceImpl implements BankTransactionService {
     private final BankTransactionRepository bankTransactionRepository;
 
     private final Environment env;
+
+    private final BankTransactionHelper bankTransactionHelper;
 
     @Override
     public void importCSV(MultipartFile file) {
@@ -53,7 +55,7 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             List<BankTransaction> bankTransactionList = csvToBean.parse();
 
             bankTransactionList.forEach((bankTransaction) -> {
-                checkExistingBankTransaction(bankTransaction, bankTransactionRepository);
+                bankTransactionHelper.checkExistingBankTransaction(bankTransaction);
                 if (bankTransaction.isWithdrawal()) {
                     bankTransaction.setAmount(bankTransaction.getAmount().negate());
                 }
@@ -88,21 +90,22 @@ public class BankTransactionServiceImpl implements BankTransactionService {
             csvOutputFile.getParentFile().mkdirs();
 
             log.debug("Starting to write data into an output file {}", csvOutputFile);
-            CSVWriter csvWriter = new CSVWriter(new FileWriter(String.valueOf(csvOutputFile)));
 
-            String[] header = {"account_number", "operation_date", "beneficiary", "comment", "amount", "currency", "is_withdrawal"};
-            csvWriter.writeNext(header);
+            try (CSVWriter csvWriter = new CSVWriter(new FileWriter(String.valueOf(csvOutputFile)))) {
 
-            String[] data;
-            for (BankTransaction s : bankTransactionList
-                .stream()
-                .flatMap(Optional::stream)
-                .findFirst().orElseThrow(() -> new Exception("No bank transactions found"))) {
-                data = new String[]{String.valueOf(s.getAccountNumber()), s.getTransactionDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                    s.getBeneficiary(), s.getComment(), String.valueOf(s.getAmount()), s.getCurrency(), String.valueOf(s.isWithdrawal())};
-                csvWriter.writeNext(data);
+                String[] header = {"account_number", "operation_date", "beneficiary", "comment", "amount", "currency", "is_withdrawal"};
+                csvWriter.writeNext(header);
+
+                String[] data;
+                for (BankTransaction s : bankTransactionList
+                    .stream()
+                    .flatMap(Optional::stream)
+                    .findFirst().orElseThrow(() -> new Exception("No bank transactions found"))) {
+                    data = new String[]{String.valueOf(s.getAccountNumber()), s.getTransactionDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                        s.getBeneficiary(), s.getComment(), String.valueOf(s.getAmount()), s.getCurrency(), String.valueOf(s.isWithdrawal())};
+                    csvWriter.writeNext(data);
+                }
             }
-            csvWriter.close();
 
             log.debug("Data written successfully to {}", csvOutputFile);
 

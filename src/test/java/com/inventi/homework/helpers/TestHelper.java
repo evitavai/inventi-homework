@@ -7,6 +7,7 @@ import com.opencsv.CSVWriter;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -17,15 +18,20 @@ import java.util.Objects;
 
 @AllArgsConstructor
 @Slf4j
+@Component
 public class TestHelper {
 
-    public static void createTestBankAccounts(List<String> accountNumbers, BankAccountRepository bankAccountRepository) {
+    private final BankAccountRepository bankAccountRepository;
+
+    private final Environment env;
+
+    public void createTestBankAccounts(List<String> accountNumbers) {
         accountNumbers.forEach((accountNumber) -> {
             bankAccountRepository.saveAndFlush(BankAccount.builder().accountNumber(accountNumber).build());
         });
     }
 
-    public static void createTestBankTransactionData(List<BankTransaction> bankAccountTransactions, Environment env) {
+    public void createTestBankTransactionData(List<BankTransaction> bankAccountTransactions) {
         try {
             File csvOutputFile = new File(Objects.requireNonNull(env.getProperty("testDataFile.path")));
             csvOutputFile.getParentFile().mkdirs();
